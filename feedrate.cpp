@@ -3,16 +3,18 @@
 #include <vector>
 #include <cstdio>
 
-// List of defined feedrate functions
-enum {
-    fz,
-    max
-};
+#include <cmath>
+#include <cstring>
+
+constexpr double PI = 3.1415926535897932;
+
+// function to assume Zc from Zn...?
 
 // fz function
+using fz = function<tag_FeedPerTooth, tag_Feedrate, tag_SpindleSpeed, tag_CutterTeeth>;
 template <>
-struct traits <fz> : traits_helper<tag_FeedPerTooth, tag_Feedrate, tag_SpindleSpeed, tag_CutterTeeth> {
-    static double fn(double Vf, double n, unsigned Zc) {
+struct impl <fz> {
+    double operator()(double Vf, double n, unsigned Zc) const {
         return Vf / (n * Zc);
     }
 };
@@ -86,7 +88,13 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
     if (in_size == 0 || out_size == 0)
         return false;
 
-    using fn_table = function_table<fz>;
+    auto fn = fz();
+    if (fn.out == out[0].tag && fn.has_in(in, in_size)) {
+        out[0].value = fn(in, in_size);
+        return true;
+    }
+
+/*    using fn_table = function_table<fz>;
 
     for (unsigned i = 0; i < out_size; ++i) {
         for (unsigned fn = 0; fn < max; ++fn) {
@@ -95,25 +103,34 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
                 out[i].value = fn_table::call(fn, in, in_size);
             }
         }
-    }
+    }*/
 
-    return true;
+    return false;
+}
+
+std::string fcc(unsigned c) {
+    return {
+        static_cast<char>((c & 0xFF000000ul) >> 24),
+        static_cast<char>((c & 0xFF0000ul) >> 16),
+        static_cast<char>((c & 0xFF00ul) >> 8),
+        static_cast<char>(c & 0xFFul)
+    };
 }
 
 int main() {
-    std::vector<TaggedValue> in = {
+    TaggedValue in[] = {
         {tag_SpindleSpeed, 3000},
         {tag_Feedrate, 400},
         {tag_CutterTeeth, 4}
     };
 
-    std::vector<TaggedValue> out = {
+    TaggedValue out[] = {
         {tag_FeedPerTooth, 0}
     };
 
-    if (calculate(in.data(), in.size(), out.data(), out.size())) {
+    if (calculate(in, 3, out, 1)) {
         for (auto param : out)
-            fprintf(stderr, "%x: %f\n", param.tag, param.value);
+            fprintf(stderr, "%s: %f\n", fcc(param.tag).c_str(), param.value);
     } else {
         fprintf(stderr, "Unable to determine all output parameters.\n");
     }

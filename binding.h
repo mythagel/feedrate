@@ -2,136 +2,49 @@
 #define BINDING_H
 #include <stdexcept>
 
-namespace detail {
+template <typename> struct impl { };
 
-bool all_of(bool arg) {
-    return arg;
-}
-template<typename Arg, typename... Args>
-bool all_of(Arg arg, Args... args) {
-    return arg && all_of(args...);
-}
+template <unsigned Out, unsigned... In>
+struct function {
+    using self = function<Out, In...>;
 
-// Uses parameter pack to find arguments for function and call from generic list of parameters.
-template <typename Out, typename...In>
-struct bind {
-    static unsigned out() {
-        return Out::value;
-    }
+    const unsigned out = Out;
+    const unsigned in[sizeof...(In)] = { In... };
+    const impl<self> fn = {};
 
-    static bool has_in(const TaggedValue* params, unsigned n) {
+    bool has_in(const TaggedValue* params, unsigned n) const {
         auto contains = [params, n](unsigned tag) {
             for (unsigned i = 0; i < n; ++i)
                 if (params[i].tag == tag)
                     return true;
             return false;
         };
-        return all_of(contains(In::value)...);
+        for (auto param : in)
+            if (!contains(param))
+                return false;
+        return true;
     }
 
-    template <typename Fn>
-    static double call(Fn fn, const TaggedValue* params, unsigned n) {
+    double operator()(const TaggedValue* params, unsigned n) const {
         auto get = [params, n](unsigned tag) {
             for (unsigned i = 0; i < n; ++i)
                 if (params[i].tag == tag)
                     return params[i].value;
             throw std::logic_error("Required input tag not present.");
         };
-        return fn(get(In::value)...);
+        return fn(get(In)...);
     }
 };
 
+/* 
+ * output parameter can be derived from input parameters
+ * input parameters can be substituted for output parameter
+ *
+ * generate a plan by substituing output parameters with functions which can
+ * derive them. branch (recurse) at each decision point and try to replace until
+ * solution(s) appear
+ * */
 
-// Introduce distinct types for value type enumeration
-template <unsigned Tag>
-struct tag {
-    static constexpr unsigned value = Tag;
-};
-// A list of the above tag types
-template <typename...Tags>
-struct tag_list { };
-// Helpers to expand tag_list back to parameter pack
-// base case
-template <typename Out, typename...In>
-struct bind_tag_list {
-    using type = bind<Out, In...>;
-};
-// specialisation for TagList
-template <typename Out, typename...In>
-struct bind_tag_list<Out, tag_list<In...>> {
-    using type = typename bind_tag_list<Out, In...>::type;
-};
-
-}
-
-template <unsigned FunctionTag>
-struct traits {};
-
-template <unsigned OutTag, unsigned... InTags>
-struct traits_helper {
-    using out = detail::tag<OutTag>;
-    using in = detail::tag_list<detail::tag<InTags>...>;
-};
-
-namespace detail {
-// Generic interface type for feedrate functions
-template<unsigned FunctionTag>
-struct function {
-    using type = typename bind_tag_list<typename traits<FunctionTag>::out, typename traits<FunctionTag>::in>::type;
-
-    static unsigned tag() {
-        return FunctionTag;
-    }
-
-    static unsigned out() {
-        return type::out();
-    }
-
-    static bool has_in(const TaggedValue* params, unsigned n) {
-        return type::has_in(params, n);
-    }
-
-    static double call(const TaggedValue* x, unsigned n) {
-        return type::template call<>(traits<FunctionTag>::fn, x, n);
-    }
-};
-
-template <unsigned... FunctionTag>
-struct function_table_entry { };
-template <unsigned Tag>
-struct function_table_entry<Tag> : function<Tag> {
-    using base = function<Tag>;
-
-    static unsigned out(unsigned tag) {
-        return tag == base::tag() ? base::out() : throw std::logic_error("unknown function");
-    }
-    static bool has_in(unsigned tag, const TaggedValue* params, unsigned n) {
-        return tag == base::tag() ? base::has_in(params, n) : throw std::logic_error("unknown function");
-    }
-    static double call(unsigned tag, const TaggedValue* x, unsigned n) {
-        return tag == base::tag() ? base::call(x, n) : throw std::logic_error("unknown function");
-    }
-};
-template <unsigned Tag, unsigned... FunctionTag>
-struct function_table_entry<Tag, FunctionTag...> : function<Tag>, function_table_entry<FunctionTag...> {
-    using base = function<Tag>;
-    using next = function_table_entry<FunctionTag...>;
-
-    static unsigned out(unsigned tag) {
-        return tag == base::tag() ? base::out() : next::out(tag);
-    }
-    static bool has_in(unsigned tag, const TaggedValue* params, unsigned n) {
-        return tag == base::tag() ? base::has_in(params, n) : next::has_in(tag, params, n);
-    }
-    static double call(unsigned tag, const TaggedValue* x, unsigned n) {
-        return tag == base::tag() ? base::call(x, n) : next::call(tag, x, n);
-    }
-};
-
-}
-
-template <unsigned... FunctionTag>
-struct function_table : detail::function_table_entry<FunctionTag...> {
-};
+// TODO type which exposes functions
 
 #endif
