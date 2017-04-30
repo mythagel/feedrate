@@ -2,25 +2,17 @@
 #include "binding.h"
 #include <vector>
 #include <cstdio>
+#include <sstream>
+#include <functional>
+#include <tuple>
 
 #include <cmath>
 #include <cstring>
+#include "id.h"
 
-constexpr double PI = 3.1415926535897932;
 
-// function to assume Zc from Zn...?
-
-// fz function
-using fz = function<tag_FeedPerTooth, tag_Feedrate, tag_SpindleSpeed, tag_CutterTeeth>;
-template <>
-struct impl <fz> {
-    double operator()(double Vf, double n, unsigned Zc) const {
-        return Vf / (n * Zc);
-    }
-};
-
-namespace formulas {
 // http://www.sandvik.coromant.com/en-us/knowledge/milling/formulas_and_definitions/formulas
+constexpr double PI = 3.1415926535897932;
 
 /* Dcap/mm      - Cutter diameter at actual depth of cut
  * fz/mm        - feed per tooth
@@ -44,33 +36,47 @@ namespace formulas {
  * Vfm/mm/min   - Table feed of tool at Dm (machined diameter)
  */
 
-double Vc(double Dcap, double n) {
-    return (Dcap * PI * n) / 1000.0;
-}
+template <> struct bind <id::Vc> {
+    double operator()(double Dcap, double n) const {
+        return (Dcap * PI * n) / 1000.0;
+    }
+};
 
-double n(double Vc, double Dcap) {
-    return (Vc * 1000.0) / (PI * Dcap);
-}
+template <> struct bind <id::n> {
+    double operator()(double Vc, double Dcap) const {
+        return (Vc * 1000.0) / (PI * Dcap);
+    }
+};
 
-double fz(double Vf, double n, unsigned Zc) {
-    return Vf / (n * Zc);
-}
+template <> struct bind <id::fz> {
+    double operator()(double Vf, double n, unsigned Zc) const {
+        return Vf / (n * Zc);
+    }
+};
 
-double Q(double ap, double ae, double Vf) {
-    return (ap * ae * Vf) / 1000.0;
-}
+template <> struct bind <id::Q> {
+    double operator()(double ap, double ae, double Vf) const {
+        return (ap * ae * Vf) / 1000.0;
+    }
+};
 
-double Vf(double fz, double n, double Zc) {
-    return fz * n * Zc;
-}
+template <> struct bind <id::Vf> {
+    double operator()(double fz, double n, double Zc) const {
+        return fz * n * Zc;
+    }
+};
 
-double Mc(double Pc, double n) {
-    return (Pc * 30.0 * 1000.0) / (PI * n);
-}
+template <> struct bind <id::Mc> {
+    double operator()(double Pc, double n) const {
+        return (Pc * 30.0 * 1000.0) / (PI * n);
+    }
+};
 
-double Pc(double ap, double ae, double Vf, double kc) {
-    return (ap * ae * Vf * kc) / (60 * 1000000.0);
-}
+template <> struct bind <id::Pc> {
+    double operator()(double ap, double ae, double Vf, double kc) const {
+        return (ap * ae * Vf * kc) / (60 * 1000000.0);
+    }
+};
 
 double hm_side(double Kr, double ae, double fz, double Dcap) {
     auto deg2rad = [](double d) { return (d / 180.0) * PI; };
@@ -81,32 +87,6 @@ double hm_face(double Kr, double ae, double fz, double Dcap) {
     return (180 * std::sin(deg2rad(Kr)) * ae * fz) / (PI * Dcap * std::asin(deg2rad(ae/Dcap)));
 }
 
-}
-
-
-extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* out, unsigned out_size) {
-    if (in_size == 0 || out_size == 0)
-        return false;
-
-    auto fn = fz();
-    if (fn.out == out[0].tag && fn.has_in(in, in_size)) {
-        out[0].value = fn(in, in_size);
-        return true;
-    }
-
-/*    using fn_table = function_table<fz>;
-
-    for (unsigned i = 0; i < out_size; ++i) {
-        for (unsigned fn = 0; fn < max; ++fn) {
-            if (fn_table::out(fn) == out[i].tag && fn_table::has_in(fn, in, in_size)) {
-                // found a function with these output parameters && available input parameters
-                out[i].value = fn_table::call(fn, in, in_size);
-            }
-        }
-    }*/
-
-    return false;
-}
 
 std::string fcc(unsigned c) {
     return {
@@ -116,19 +96,117 @@ std::string fcc(unsigned c) {
         static_cast<char>(c & 0xFFul)
     };
 }
+template <unsigned Out, unsigned... In>
+std::string to_string(const function<Out, In...>& fn) {
+    std::stringstream s;
+    s << "(";
+    for (auto& in : fn.in)
+        s << " '" << fcc(in) << "'";
+    s << " )";
+    s << " -> '" << fcc(fn.out) << "'";
+    return s.str();
+}
+
+
+// function to assume Zc from Zn...?
+
+/* List of mappings i.e. functions which calculate output from inputs
+ * unknowns can be substituted by functions with that output parameter
+ * where multiple functions have that output parameter, then branch to 
+ * investigate each option.
+ *
+ * */
+
+namespace detail {
+template <typename Fn, typename T, std::size_t... I>
+void for_each(const T& t, Fn fn, std::index_sequence<I...>) {
+    auto _ = { (fn(std::get<I>(t)), 0)... };
+    (void)_;
+}
+}
+template <typename Fn, typename... Args>
+void for_each(const std::tuple<Args...>& t, Fn fn) {
+    detail::for_each(t, fn, std::index_sequence_for<Args...>{});
+}
+
+extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* out, unsigned out_size) {
+    static constexpr auto t = std::make_tuple(id::Vc(), id::n(), id::fz(), id::Q(), id::Vf(), id::Mc(), id::Pc());
+
+    if (in_size == 0 || out_size == 0)
+        return false;
+
+    std::vector<TaggedValue> values(in, in+in_size);
+
+    auto exists = [&](unsigned tag) {
+        for (auto& v : values)
+            if (v.tag == tag) return true;
+        return false;
+    };
+
+    for (unsigned _ = 0; _ < 10; ++_)
+    for_each(t, [&](auto fn) {
+        if (!exists(fn.out) && fn.has_in(values.data(), values.size())) {
+            fprintf(stderr, "%s\n", to_string(fn).c_str());
+            values.push_back({ fn.out, fn(values.data(), values.size())} );
+        }
+    });
+
+    for (unsigned i = 0; i < out_size; ++i) {
+        auto get = [&](unsigned tag, double& value) {
+            for (auto& v : values)
+                if (v.tag == tag) {
+                    value = v.value;
+                    return true;
+                }
+            return false;
+        };
+
+        //if (!get(out[i].tag, out[i].value))
+        //    return false;
+        get(out[i].tag, out[i].value);
+    }
+
+    return true;
+}
+
 
 int main() {
-    TaggedValue in[] = {
+    std::vector<TaggedValue> in = {
         {tag_SpindleSpeed, 3000},
-        {tag_Feedrate, 400},
-        {tag_CutterTeeth, 4}
+        {tag_TableFeed, 400},
+        {tag_DepthOfCut, 4},
+        {tag_WorkingEngagement, 4}, // slotting
+
+        {tag_CutterDiameterAtDepthOfCut, 4},
+        {tag_CutterTeeth, 4},
+        {tag_EffectiveCutterTeeth, 4},
     };
 
-    TaggedValue out[] = {
-        {tag_FeedPerTooth, 0}
+    std::vector<TaggedValue> out = {
+        {tag_CutterDiameterAtDepthOfCut, 0},
+        {tag_FeedPerTooth, 0},
+        {tag_CutterTeeth, 0},
+        {tag_EffectiveCutterTeeth, 0},
+        {tag_TableFeed, 0},
+        {tag_FeedPerRevolution, 0},
+        {tag_DepthOfCut, 0},
+        {tag_CuttingSpeed, 0},
+        {tag_ChipRakeAngle, 0},
+        {tag_WorkingEngagement, 0},
+        {tag_SpindleSpeed, 0},
+        {tag_NetPower, 0},
+        {tag_Torque, 0},
+        {tag_MaterialRemovalRate, 0},
+        {tag_AverageChipThickness, 0},
+        {tag_MaxChipThickness, 0},
+        {tag_EnteringAngle, 0},
+        {tag_MachinedDiameter, 0},
+        {tag_UnmachinedDiameter, 0},
+        {tag_TableFeedAtMachinedDiameter, 0},
+        {tag_SpecificCuttingForce, 0}
     };
 
-    if (calculate(in, 3, out, 1)) {
+    if (calculate(in.data(), in.size(), out.data(), out.size())) {
         for (auto param : out)
             fprintf(stderr, "%s: %f\n", fcc(param.tag).c_str(), param.value);
     } else {

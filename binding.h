@@ -2,7 +2,7 @@
 #define BINDING_H
 #include <stdexcept>
 
-template <typename> struct impl { };
+template <typename> struct bind { };
 
 template <unsigned Out, unsigned... In>
 struct function {
@@ -10,7 +10,7 @@ struct function {
 
     const unsigned out = Out;
     const unsigned in[sizeof...(In)] = { In... };
-    const impl<self> fn = {};
+    const bind<self> fn = {};
 
     bool has_in(const TaggedValue* params, unsigned n) const {
         auto contains = [params, n](unsigned tag) {
