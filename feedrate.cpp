@@ -172,10 +172,9 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
 
 int main() {
     std::vector<TaggedValue> in = {
-        {tag_SpindleSpeed, 3000},
-        {tag_TableFeed, 400},
-        {tag_DepthOfCut, 4},
-        {tag_WorkingEngagement, 4}, // slotting
+        {tag_FeedPerTooth, 0.05},   // 4mm 4 flute endmill
+        {tag_CuttingSpeed, 150},    // 6061-T6 low-end
+        //{tag_SpindleSpeed, 2000},
 
         {tag_CutterDiameterAtDepthOfCut, 4},
         {tag_CutterTeeth, 4},
@@ -183,27 +182,8 @@ int main() {
     };
 
     std::vector<TaggedValue> out = {
-        {tag_CutterDiameterAtDepthOfCut, 0},
-        {tag_FeedPerTooth, 0},
-        {tag_CutterTeeth, 0},
-        {tag_EffectiveCutterTeeth, 0},
         {tag_TableFeed, 0},
-        {tag_FeedPerRevolution, 0},
-        {tag_DepthOfCut, 0},
-        {tag_CuttingSpeed, 0},
-        {tag_ChipRakeAngle, 0},
-        {tag_WorkingEngagement, 0},
         {tag_SpindleSpeed, 0},
-        {tag_NetPower, 0},
-        {tag_Torque, 0},
-        {tag_MaterialRemovalRate, 0},
-        {tag_AverageChipThickness, 0},
-        {tag_MaxChipThickness, 0},
-        {tag_EnteringAngle, 0},
-        {tag_MachinedDiameter, 0},
-        {tag_UnmachinedDiameter, 0},
-        {tag_TableFeedAtMachinedDiameter, 0},
-        {tag_SpecificCuttingForce, 0}
     };
 
     if (calculate(in.data(), in.size(), out.data(), out.size())) {

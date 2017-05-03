@@ -1,5 +1,6 @@
 #ifndef BINDING_H
 #define BINDING_H
+#include "feedrate.h"
 #include <stdexcept>
 
 template <typename> struct bind { };
@@ -35,16 +36,5 @@ struct function {
         return fn(get(In)...);
     }
 };
-
-/* 
- * output parameter can be derived from input parameters
- * input parameters can be substituted for output parameter
- *
- * generate a plan by substituing output parameters with functions which can
- * derive them. branch (recurse) at each decision point and try to replace until
- * solution(s) appear
- * */
-
-// TODO type which exposes functions
 
 #endif
