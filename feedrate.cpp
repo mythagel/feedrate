@@ -5,10 +5,12 @@
 #include <sstream>
 #include <functional>
 #include <tuple>
+#include <cstdint>
 
 #include <cmath>
 #include <cstring>
 #include "id.h"
+#include "taginfo.h"
 
 
 // http://www.sandvik.coromant.com/en-us/knowledge/milling/formulas_and_definitions/formulas
@@ -88,7 +90,9 @@ double hm_face(double Kr, double ae, double fz, double Dcap) {
 }
 
 
-std::string fcc(unsigned c) {
+std::string fcc(uint32_t c) {
+    if (tag_name(c))
+        return tag_name(c);
     return {
         static_cast<char>((c & 0xFF000000ul) >> 24),
         static_cast<char>((c & 0xFF0000ul) >> 16),
@@ -96,7 +100,7 @@ std::string fcc(unsigned c) {
         static_cast<char>(c & 0xFFul)
     };
 }
-template <unsigned Out, unsigned... In>
+template <uint32_t Out, uint32_t... In>
 std::string to_string(const function<Out, In...>& fn) {
     std::stringstream s;
     s << "(";
@@ -137,7 +141,7 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
 
     std::vector<TaggedValue> values(in, in+in_size);
 
-    auto exists = [&](unsigned tag) {
+    auto exists = [&](uint32_t tag) {
         for (auto& v : values)
             if (v.tag == tag) return true;
         return false;
@@ -152,7 +156,7 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
     });
 
     for (unsigned i = 0; i < out_size; ++i) {
-        auto get = [&](unsigned tag, double& value) {
+        auto get = [&](uint32_t tag, double& value) {
             for (auto& v : values)
                 if (v.tag == tag) {
                     value = v.value;
@@ -161,9 +165,8 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
             return false;
         };
 
-        //if (!get(out[i].tag, out[i].value))
-        //    return false;
-        get(out[i].tag, out[i].value);
+        if (!get(out[i].tag, out[i].value))
+            return false;
     }
 
     return true;
