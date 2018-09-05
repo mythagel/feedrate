@@ -10,7 +10,7 @@
 #include <cmath>
 #include <cstring>
 #include "id.h"
-#include "taginfo.h"
+#include "utils.h"
 
 
 // http://www.sandvik.coromant.com/en-us/knowledge/milling/formulas_and_definitions/formulas
@@ -89,17 +89,6 @@ double hm_face(double Kr, double ae, double fz, double Dcap) {
     return (180 * std::sin(deg2rad(Kr)) * ae * fz) / (PI * Dcap * std::asin(deg2rad(ae/Dcap)));
 }
 
-
-std::string fcc(uint32_t c) {
-    if (tag_name(c))
-        return tag_name(c);
-    return {
-        static_cast<char>((c & 0xFF000000ul) >> 24),
-        static_cast<char>((c & 0xFF0000ul) >> 16),
-        static_cast<char>((c & 0xFF00ul) >> 8),
-        static_cast<char>(c & 0xFFul)
-    };
-}
 template <uint32_t Out, uint32_t... In>
 std::string to_string(const function<Out, In...>& fn) {
     std::stringstream s;
@@ -148,12 +137,12 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
     };
 
     for (unsigned _ = 0; _ < 10; ++_)
-    for_each(t, [&](auto fn) {
-        if (!exists(fn.out) && fn.has_in(values.data(), values.size())) {
-            fprintf(stderr, "%s\n", to_string(fn).c_str());
-            values.push_back({ fn.out, fn(values.data(), values.size())} );
-        }
-    });
+        for_each(t, [&](auto fn) {
+            if (!exists(fn.out) && fn.has_in(values.data(), values.size())) {
+                fprintf(stderr, "%s\n", to_string(fn).c_str());
+                values.push_back({ fn.out, fn(values.data(), values.size())} );
+            }
+        });
 
     for (unsigned i = 0; i < out_size; ++i) {
         auto get = [&](uint32_t tag, double& value) {
@@ -172,27 +161,3 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
     return true;
 }
 
-
-int main() {
-    std::vector<TaggedValue> in = {
-        {tag_FeedPerTooth, 0.05},   // 4mm 4 flute endmill
-        {tag_CuttingSpeed, 150},    // 6061-T6 low-end
-        //{tag_SpindleSpeed, 2000},
-
-        {tag_CutterDiameterAtDepthOfCut, 4},
-        {tag_CutterTeeth, 4},
-        {tag_EffectiveCutterTeeth, 4},
-    };
-
-    std::vector<TaggedValue> out = {
-        {tag_TableFeed, 0},
-        {tag_SpindleSpeed, 0},
-    };
-
-    if (calculate(in.data(), in.size(), out.data(), out.size())) {
-        for (auto param : out)
-            fprintf(stderr, "%s: %f\n", fcc(param.tag).c_str(), param.value);
-    } else {
-        fprintf(stderr, "Unable to determine all output parameters.\n");
-    }
-}
