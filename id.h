@@ -10,7 +10,10 @@ using Q = function<tag_MaterialRemovalRate, tag_DepthOfCut, tag_WorkingEngagemen
 using Vf = function<tag_TableFeed, tag_FeedPerTooth, tag_SpindleSpeed, tag_EffectiveCutterTeeth>;
 using Mc = function<tag_Torque, tag_NetPower, tag_SpindleSpeed>;
 using Pc = function<tag_NetPower, tag_DepthOfCut, tag_WorkingEngagement, tag_TableFeed, tag_SpecificCuttingForce>;
-
+using F = function<tag_Deflection, tag_CutterOverhang, tag_DepthOfCut, tag_CutterMaterialElasticity, tag_CutterMomentOfInertia, tag_TangentialForce>;
+using I = function<tag_CutterMomentOfInertia, tag_CutterDiameterAtDepthOfCut>;
+using A = function<tag_ChipCrossSectionalArea, tag_DepthOfCut, tag_FeedPerTooth>;
+using Ft = function<tag_TangentialForce, tag_MaterialTensileStrength, tag_ChipCrossSectionalArea, tag_EffectiveCutterTeeth>;
 }
 
 

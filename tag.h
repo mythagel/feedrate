@@ -23,7 +23,15 @@ enum {
     tag_MachinedDiameter = '  Dm',              // mm        - Machined diameter (component diameter)
     tag_UnmachinedDiameter = '  Dw',            // mm        - Unmachined diameter
     tag_TableFeedAtMachinedDiameter = ' Vfm',   // mm/min    - Table feed of tool at Dm (machined diameter)
-    tag_SpecificCuttingForce = '  kc',
+    tag_SpecificCuttingForce = '  kc',          // N/mm2     - Material specific cutting force
+    tag_CutterOverhang = '   T',                // mm        - Unsupported cutter length
+    tag_CutterMaterialElasticity = '  ZE',      // N/mm2     - Cutter modulus of elasticity (Carbide / HSS)
+    tag_CutterMomentOfInertia = '   I',         // mm4       - Cutter area moment of inertia
+
+    tag_Deflection = '   F',                    // mm        - Deflection
+    tag_TangentialForce = '  Ft',               // N         - Tangiential cutting force
+    tag_ChipCrossSectionalArea = '   A',        //           - Uncut chip cross-sectional area
+    tag_MaterialTensileStrength = ' sig',       // MPa       - Material ultimate tensile strength
 };
 
 #endif
