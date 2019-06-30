@@ -29,7 +29,7 @@ enum {
     tag_CutterMomentOfInertia = '   I',         // mm4       - Cutter area moment of inertia
 
     tag_Deflection = '   F',                    // mm        - Deflection
-    tag_TangentialForce = '  Ft',               // N         - Tangiential cutting force
+    tag_TangentialForce = '  Fc',               // N         - Tangiential cutting force
     tag_ChipCrossSectionalArea = '   A',        //           - Uncut chip cross-sectional area
     tag_MaterialTensileStrength = ' sig',       // MPa       - Material ultimate tensile strength
 };

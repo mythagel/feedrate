@@ -13,7 +13,7 @@ using Pc = function<tag_NetPower, tag_DepthOfCut, tag_WorkingEngagement, tag_Tab
 using F = function<tag_Deflection, tag_CutterOverhang, tag_DepthOfCut, tag_CutterMaterialElasticity, tag_CutterMomentOfInertia, tag_TangentialForce>;
 using I = function<tag_CutterMomentOfInertia, tag_CutterDiameterAtDepthOfCut>;
 using A = function<tag_ChipCrossSectionalArea, tag_DepthOfCut, tag_FeedPerTooth>;
-using Ft = function<tag_TangentialForce, tag_MaterialTensileStrength, tag_ChipCrossSectionalArea, tag_EffectiveCutterTeeth>;
+using Fc = function<tag_TangentialForce, tag_MaterialTensileStrength, tag_ChipCrossSectionalArea, tag_EffectiveCutterTeeth>;
 }
 
 

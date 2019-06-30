@@ -84,9 +84,9 @@ template <> struct bind <id::Pc> {
 };
 
 template <> struct bind <id::F> {
-    double operator()(double T, double ap, double ZE, double I, double Ft) const {
+    double operator()(double T, double ap, double ZE, double I, double Fc) const {
         double a = T - ap;
-        return ((Ft * pow(a, 3)) / (3*ZE*I)) * (1 + (3*ap) / (2*a));
+        return ((Fc * pow(a, 3)) / (3*ZE*I)) * (1 + (3*ap) / (2*a));
     }
 };
 
@@ -104,7 +104,7 @@ template <> struct bind <id::A> {
     }
 };
 
-template <> struct bind <id::Ft> {
+template <> struct bind <id::Fc> {
     double operator()(double sig, double A, double Zc) const {
         return sig * A * Zc;
     }
@@ -165,7 +165,7 @@ extern "C" bool calculate(const TaggedValue* in, unsigned in_size, TaggedValue* 
          id::F(), 
          id::I(),
          id::A(),
-         id::Ft()
+         id::Fc()
         );
 
     if (in_size == 0 || out_size == 0)
